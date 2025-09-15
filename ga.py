@@ -139,23 +139,25 @@ class Mutation:
 
     def random_bit_mutation(self, individual: List[int]) -> None:
         for N in range(self.N):
+            individual_copy = individual[N].copy()
             mutation_props_list = [random.random()
                                    for _ in range(self.N_length)]
             for i in range(self.N_length):
                 if mutation_props_list[i] < self.mutation_props:
-                    mutation_point = random.choice(range(self.N_length))
-                    individual[N][mutation_point] ^= self.xor_value
+                    individual_copy[i] ^= self.xor_value
+            individual[N] = individual_copy
         return None
 
     def random_mutation(self, individual: List[int]) -> None:
         for N in range(self.N):
+            individual_copy = individual[N].copy()
             mutation_props_list = [random.random()
                                    for _ in range(self.N_length)]
             for i in range(self.N_length):
                 if mutation_props_list[i] < self.mutation_props:
                     mutation_value = random.choice(range(self.N_length))
-                    mutation_point = random.choice(range(self.N_length))
-                    individual[N][mutation_point] = mutation_value
+                    individual_copy[i] = mutation_value
+            individual[N] = individual_copy
         return None
 
     def point_mutation(self, individual: List[int]) -> None:
