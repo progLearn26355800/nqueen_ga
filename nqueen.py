@@ -86,12 +86,13 @@ class NQueen(GA):
                         self.individual[i] = self.__init_chrome()
                         continue
                     if evaluate == 1.:
-                        self.fitting_results.append(self.individual[i])
+                        self.fitting_results.append(tuple(self.individual[i]))
                         self.individual[i] = self.__init_chrome()
+                self.fitting_results = list(set(self.fitting_results))
             print(f'====== {gen + 1} step, result: {result_num} =======\r', end='')
             gen += 1
         self.total_loop = gen
-        self.fitting_results = tuple(set([tuple(result) for result in self.fitting_results]))
+        self.fitting_results = tuple(set([result for result in self.fitting_results]))
         return None
 
     def __print_individual_evaluate(self) -> None:
