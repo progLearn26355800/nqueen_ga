@@ -4,6 +4,7 @@
 import csv
 import random
 from typing import List
+from nqueen import NQueen
 from knapsack import Knapsack
 from onemax import OneMax
 
@@ -22,11 +23,11 @@ def load_ranking_props(input_file: str) -> List[float]:
 if __name__ == '__main__':
 
     ranking_props = load_ranking_props('ranking_rate.csv')
-    knapsack_weight = 65
-    obj_weight = [10, 12, 7, 9, 21, 16]
-    obj_price = [120, 130, 80, 100, 250, 185]
-    knapsack = Knapsack(1000, 100, len(obj_weight), knapsack_weight, obj_weight, obj_price,
-                        .1, 'ranking', ranking_props, 'random', 'random', mode='other')
-    knapsack.fit()
+    # knapsack_weight = 65
+    # obj_weight = [10, 12, 7, 9, 21, 16]
+    # obj_price = [120, 130, 80, 100, 250, 185]
+    nqueen = NQueen(10000, 200, 10, .25, 'ranking', ranking_props, 'order', 'shuffle')
+    nqueen.fit()
+    nqueen.output_all_result_to_csv()
     # one_max = OneMax(25, 20, 10, .4, 'roulette', ranking_props, 'random', 'random_bit')
     # one_max.fit()
