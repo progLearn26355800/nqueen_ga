@@ -1,121 +1,97 @@
 # coding: utf-8
 
 
+import os
+import shutil
 import random
-from typing import List, Tuple
+from typing import List
 
 
-class NQueen:
+from ga import GA
 
-    def __init__(self, gen: int, N: int, mutation_props: float, select: str, queen_num: int,
-                 ranking_props: List[float] = []):
-        self.gen = gen
-        self.N = N
-        self.mutation_props = mutation_props
-        select_func_dict = {
-            'roulette': self.roulette,
-            'ranking': self.ranking
-        }
-        self.select_func = select_func_dict[select]
+
+MAX_PATTERN = [1, None, None,
+               2, 10, 4, 40, 92,
+               352, 724, 2680,
+               14200, 73712, 365596,
+               2279184,
+               14772512, 95815104,
+               666909624, 4968057848,
+               39029188884,
+               314666222712,
+               2691008701644,
+               24233937684440,
+               227514171973736]
+
+
+class NQueen(GA):
+
+    def __init__(self, gen: int, N: int, queen_num: int, mutation_props: float, select_func: str = 'roulette',
+                 ranking_props: List[float] = [], cross_func: str = 'random', mutation_func: str = 'point', verbose: bool = False):
+        super().__init__(gen, N, queen_num, mutation_props, select_func, ranking_props, cross_func, mutation_func)
         self.queen_num = queen_num
         self.evaluate_result = []
         self.fitting_results = []
         self.total_loop = 0
-        self.ranking_props = ranking_props
+        self.output_individual_dir = 'output_individual'
+        self.output_all_results = 'output_all_result.csv'
+        self.verbose = verbose
 
-    def __init_individual(self) -> None:
+    def init_individual(self) -> None:
         self.individual = [random.sample(
             range(self.queen_num), self.queen_num) for _ in range(self.N)]
         return None
 
+    def __init_chrome(self) -> List[int]:
+        return random.sample(range(self.queen_num), self.queen_num)
+
     def evaluate(self) -> None:
-        self.evaluate_result = [self.__evaluate_func(
+        self.evaluate_result = [self.evaluate_func(
             individual) for individual in self.individual]
         return None
 
-    def __evaluate_func(self, individual: List[int]) -> float:
+    def evaluate_func(self, individual: List[int]) -> float:
         return 1 / (1 + self.__count_duplicate(individual))
 
     def __count_duplicate(self, individual: list[int]) -> int:
         total_count = 0
         for i, row in enumerate(individual):
-            row_count = sum(1 for pos in individual if pos == row) - 1
-            total_count += row_count
+            total_count += sum(1 for pos in individual if pos == row) - 1
+
             for j in range(i + 1, len(individual)):
-                if (i + row) == (j + individual[j]):
+                if i + row == j + individual[j]:
                     total_count += 1
-                if abs(i - row) == abs(j - individual[j]):
+                if i - row == j - individual[j]:
                     total_count += 1
         return total_count
 
-    def roulette(self) -> List[int]:
-        evaluate_sum = sum(self.evaluate_result)
-        select_props = [(evaluate / evaluate_sum) for evaluate in self.evaluate_result]
-        select_index = random.choices(
-            range(self.N), k=self.N, weights=select_props)
-        return select_index
-
-    def ranking(self) -> List[int]:
-        print(self.evaluate_result)
-        print(list(range(len(self.evaluate_result))))
-        sort_evaluate = sorted(range(len(self.evaluate_result)), key=self.evaluate_result.__getitem__, reverse=True)
-        print(sort_evaluate)
-        select_index = random.choices(
-            sort_evaluate, k=self.N, weights=self.ranking_props
-        )
-        print(select_index)
-        return select_index
-
-    def cross(self) -> None:
-        pairs = self.__create_random_pairs()
-        for pair in pairs:
-            cross_point = random.choices(range(2), k=self.queen_num)
-            for i in range(self.queen_num):
-                if cross_point[i] == 1:
-                    self.individual[pair[0]][i], self.individual[pair[1]
-                                                                 ][i] = self.individual[pair[1]][i], self.individual[pair[0]][i]
-        return None
-
-    def __create_random_pairs(self) -> List[Tuple[int]]:
-        individual_index = list(range(self.N))
-        random.shuffle(individual_index)
-        pairs = []
-        for i in range(0, len(individual_index) - 1, 2):
-            if i + 1 < len(individual_index):
-                pairs.append((individual_index[i], individual_index[i + 1]))
-        return pairs
-
-    def mutation(self) -> None:
-        for N in range(self.N):
-            mutation_props_list = [random.random()
-                                   for _ in range(self.queen_num)]
-            for i in range(self.queen_num):
-                if mutation_props_list[i] < self.mutation_props:
-                    self.individual[N][i] = random.choices(range(self.queen_num))[0]
-        return None
-
-    def step(self) -> None:
-        self.evaluate()
-        select_index = self.select_func()
-        self.individual = [self.individual[index] for index in select_index]
-        self.cross()
-        self.mutation()
-        return None
-
     def fit(self) -> None:
         gen = 0
-        self.__init_individual()
-        print('====== init individual ======')
-        self.__print_init_individual()
-        while gen < self.gen:
-            print(f'====== {gen} step =======')
-            self.step()
+        self.__init_output_individual()
+        self.init_individual()
+        self.evaluate()
+        if self.verbose:
+            print('====== init individual ======')
             self.__print_individual_evaluate()
-            if 1. in self.evaluate_result:
-                self.fitting_results = [self.individual[i] for i, evaluate in enumerate(self.evaluate_result) if evaluate == 1.]
+        while gen < self.gen:
+            result_num = len(self.fitting_results)
+            if result_num == MAX_PATTERN[self.queen_num - 1]:
                 break
+            self.step()
+            if self.verbose:
+                self.__print_individual_evaluate()
+            if 1. in self.evaluate_result:
+                for i, evaluate in enumerate(self.evaluate_result):
+                    if self.individual[i] in self.fitting_results:
+                        self.individual[i] = self.__init_chrome()
+                        continue
+                    if evaluate == 1.:
+                        self.fitting_results.append(self.individual[i])
+                        self.individual[i] = self.__init_chrome()
+            print(f'====== {gen + 1} step, result: {result_num} =======\r', end='')
             gen += 1
         self.total_loop = gen
+        self.fitting_results = tuple(set([tuple(result) for result in self.fitting_results]))
         return None
 
     def __print_individual_evaluate(self) -> None:
@@ -127,3 +103,20 @@ class NQueen:
         for i, individual in enumerate(self.individual):
             print(f'{i}: {individual}')
         return None
+
+    def __init_output_individual(self) -> None:
+        if os.path.exists(self.output_individual_dir):
+            shutil.rmtree(self.output_individual_dir)
+        os.makedirs(self.output_individual_dir)
+        return None
+
+    def output_individual_to_csv(self, step: int) -> None:
+        with open(os.path.join(self.output_individual_dir, f'{step}.csv'), 'w') as f:
+            for individual in self.individual:
+                f.write(f"{','.join(list(map(str, individual)))}\n")
+        return None
+
+    def output_all_result_to_csv(self) -> None:
+        with open(self.output_all_results, 'w') as f:
+            for result in self.fitting_results:
+                f.write(f"{','.join(tuple(map(str, result)))}\n")
