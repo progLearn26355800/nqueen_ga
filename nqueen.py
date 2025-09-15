@@ -120,3 +120,13 @@ class NQueen(GA):
         with open(self.output_all_results, 'w') as f:
             for result in self.fitting_results:
                 f.write(f"{','.join(tuple(map(str, result)))}\n")
+
+    def output_board(self) -> None:
+        # queen_num = len(board_array)
+        # board = [list('.' * queen_num) for _ in range(queen_num)]
+        # for i in range(len(board_array)):
+        #     board[board_array[i]][i] = 'O'
+        # for line in board:
+        #     print(' '.join(line))
+        # return None
+        pass
