@@ -2,7 +2,7 @@ import time
 import concurrent.futures
 
 def is_prime(n):
-    """素数判定を行う関数（CPU負荷の高い計算の例）"""
+    """素数判定を行う関数"""
     if n < 2:
         return False
     for i in range(2, int(n ** 0.5) + 1):
@@ -16,36 +16,38 @@ def process_number(num):
     return f"{num} は素数です" if result else f"{num} は素数ではありません"
 
 def process_row(row):
-    """行全体を処理する関数（行単位で並列化する場合）"""
+    """行全体を処理する関数"""
     return [process_number(num) for num in row]
 
 def main():
-    # 2重リストのサンプルデータ
-    data = [
-        [104729, 104743, 104759, 104761, 104773],
-        [104779, 104789, 104801, 104803, 104827],
-        [104831, 104849, 104851, 104869, 104873],
-        [104891, 104907, 104917, 104933, 104947]
-    ]
+    # データ量を大幅に増やす（100行 × 100列 = 10,000個）
+    # より大きな数値で計算時間を増やす
+    import random
+    random.seed(42)
     
+    data = []
+    for _ in range(100):
+        row = [random.randint(1000000, 10000000) for _ in range(100)]
+        data.append(row)
+    
+    print(f"データ数: {len(data)} 行 × {len(data[0])} 列 = {len(data) * len(data[0])} 個")
+    
+    # 逐次処理
     start_time = time.time()
+    results_seq = []
+    for row in data:
+        results_seq.append(process_row(row))
+    sequential_time = time.time() - start_time
+    print(f"逐次処理時間: {sequential_time:.4f} 秒")
     
-    # CPUバウンドな処理なので ProcessPoolExecutor を使用
-    # max_workers を指定しない場合、CPUコア数が自動的に使用されます
+    # 並列処理
+    start_time = time.time()
     with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
-        # 各行を並列処理
-        results = list(executor.map(process_row, data))
+        results_parallel = list(executor.map(process_row, data))
+    parallel_time = time.time() - start_time
+    print(f"並列処理時間: {parallel_time:.4f} 秒")
     
-    end_time = time.time()
-    
-    # 結果の表示
-    print("=== 処理結果 ===")
-    for i, row_results in enumerate(results):
-        print(f"\n行 {i+1}:")
-        for result in row_results:
-            print(f"  {result}")
-    
-    print(f"\n処理時間: {end_time - start_time:.4f} 秒")
+    print(f"速度向上率: {sequential_time / parallel_time:.2f}倍")
 
 if __name__ == "__main__":
     main()
