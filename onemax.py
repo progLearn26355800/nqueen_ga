@@ -13,8 +13,9 @@ from ga import GA
 class OneMax(GA):
     def __init__(self, gen: int, N: int, N_length: int,
                  mutation_props: float, select_func: str = 'roulette',
-                 ranking_props: List[float] = [], cross_func: str = 'random', mutation_func: str = 'point'):
-        super().__init__(gen, N, N_length, mutation_props, select_func, ranking_props, cross_func, mutation_func)
+                 ranking_props: List[float] = [], cross_func: str = 'random', mutation_func: str = 'point',
+                 multi_mode: bool=False):
+        super().__init__(gen, N, N_length, mutation_props, select_func, ranking_props, cross_func, mutation_func, multi_mode)
         self.N_length = N_length
         self.fitting_results = []
         self.output_csv_dir = 'output_result_csv'

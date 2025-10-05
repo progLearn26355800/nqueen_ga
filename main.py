@@ -26,7 +26,7 @@ if __name__ == '__main__':
     # knapsack_weight = 65
     # obj_weight = [10, 12, 7, 9, 21, 16]
     # obj_price = [120, 130, 80, 100, 250, 185]
-    nqueen = NQueen(10000, 200, 10, .25, 'ranking', ranking_props, 'order', 'shuffle')
+    nqueen = NQueen(10000, 200, 10, .25, 'ranking', ranking_props, 'order', 'shuffle', multi_mode=True)
     nqueen.fit()
     nqueen.output_all_result_to_csv()
     # one_max = OneMax(25, 20, 10, .4, 'roulette', ranking_props, 'random', 'random_bit')

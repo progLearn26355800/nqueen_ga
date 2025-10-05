@@ -27,8 +27,9 @@ MAX_PATTERN = [1, None, None,
 class NQueen(GA):
 
     def __init__(self, gen: int, N: int, queen_num: int, mutation_props: float, select_func: str = 'roulette',
-                 ranking_props: List[float] = [], cross_func: str = 'random', mutation_func: str = 'point', verbose: bool = False):
-        super().__init__(gen, N, queen_num, mutation_props, select_func, ranking_props, cross_func, mutation_func)
+                 ranking_props: List[float] = [], cross_func: str = 'random', mutation_func: str = 'point', verbose: bool = False,
+                 multi_mode: bool=False):
+        super().__init__(gen, N, queen_num, mutation_props, select_func, ranking_props, cross_func, mutation_func, multi_mode)
         self.queen_num = queen_num
         self.evaluate_result = []
         self.fitting_results = []

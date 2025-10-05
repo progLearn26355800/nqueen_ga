@@ -4,20 +4,37 @@
 import random
 from abc import ABC, abstractmethod
 from typing import List, Tuple
+import multiprocessing
+import concurrent.futures
+
+
+cpu_num = multiprocessing.cpu_count()
+max_workers_num = cpu_num 
 
 
 class GA(ABC):
     def __init__(self, gen: int, N: int, N_length: int, mutation_props: float, select_func: str = 'roulette',
-                 ranking_props: List[float] = [], cross_func: str = 'random', mutation_func: str = 'point'):
+                 ranking_props: List[float] = [], cross_func: str = 'random', mutation_func: str = 'point',
+                 multi_mode: bool=False):
         self.gen = gen
         self.N = N
         self.individual = []
         self.select = Select(N, ranking_props)
-        self.mutation = Mutation(N, N_length, mutation_props)
-        self.cross = Cross(N, N_length)
         self.select_func = select_func
         self.cross_func = cross_func
         self.mutation_func = mutation_func
+        self.__init_multi(N, N_length, mutation_props, multi_mode)
+    
+    def __init_multi(self, N: int, N_length: int, mutation_props: float, multi_mode: bool) -> None:
+        if multi_mode:
+            self.mutation = Mutation_Multi(N, N_length, mutation_props)
+            self.cross = Cross_Multi(N, N_length)
+            return None
+        self.mutation = Mutation(N, N_length, mutation_props)
+        self.cross = Cross(N, N_length)
+        return None
+        
+
 
     @abstractmethod
     def init_individual(self) -> None:
@@ -46,7 +63,7 @@ class GA(ABC):
 
 
 class Select:
-    def __init__(self, N: int, ranking_props: List[int] = []):
+    def __init__(self, N: int, ranking_props: List[float] = []):
         self.N = N
         self.ranking_props = ranking_props
         self.select_func = {
@@ -175,4 +192,55 @@ class Mutation:
         for N in range(self.N):
             if mutation_props_list[N] < self.mutation_props:
                 random.shuffle(individual[N])
+        return None
+
+
+class Cross_Multi(Cross):
+
+    def __init__(self, N: int, N_length: int):
+        super().__init__(N, N_length)
+        self.cross_func = {
+            'random': self.random_cross_multi,
+            'order': self.order_cross_multi
+        }
+
+    def random_cross_multi(self, individual: List[int]) -> None:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers_num) as executor:
+            _ = executor.map(self.random_cross, individual)
+        return None
+
+    def order_cross_multi(self, individual: List[int]) -> None:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers_num) as executor:
+            _ = executor.map(self.order_cross, individual)
+        return None
+
+
+class Mutation_Multi(Mutation):
+    def __init__(self, N: int, N_length: int, mutation_props: float):
+        super().__init__(N, N_length, mutation_props)
+        self.mutation_func = {
+            'random_bit': self.random_bit_mutation_multi,
+            'random': self.random_mutation_multi,
+            'point': self.point_mutation_multi,
+            'shuffle': self.shuffle_mutation_multi
+        }
+
+    def random_bit_mutation_multi(self, individual: List[int]) -> None:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers_num) as executor:
+            _ = executor.map(self.random_bit_mutation, individual)
+        return None
+
+    def random_mutation_multi(self, individual: List[int]) -> None:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers_num) as executor:
+            _ = executor.map(self.random_mutation, individual)
+        return None
+
+    def point_mutation_multi(self, individual: List[int]) -> None:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers_num) as executor:
+            _ = executor.map(self.point_mutation, individual)
+        return None
+
+    def shuffle_mutation_multi(self, individual: List[int]) -> None:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers_num) as executor:
+            _ = executor.map(self.shuffle_mutation, individual)
         return None
