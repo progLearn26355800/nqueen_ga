@@ -1,3 +1,4 @@
+# nqueen.py
 # coding: utf-8
 
 
@@ -24,6 +25,27 @@ MAX_PATTERN = [1, None, None,
                227514171973736]
 
 
+# トップレベル関数として定義（pickle化を効率化）
+def _evaluate_nqueen(individual: List[int]) -> float:
+    """
+    n-queen問題の評価関数（並列処理用）
+    衝突数をカウントして適合度を計算
+    """
+    total_count = 0
+    for i, row in enumerate(individual):
+        # 同じ行のチェック（順列表現なので不要だが一応）
+        total_count += sum(1 for pos in individual if pos == row) - 1
+
+        # 対角線のチェック
+        for j in range(i + 1, len(individual)):
+            if i + row == j + individual[j]:
+                total_count += 1
+            if i - row == j - individual[j]:
+                total_count += 1
+
+    return 1.0 / (1.0 + total_count)
+
+
 class NQueen(GA):
 
     def __init__(self, gen: int, N: int, queen_num: int, mutation_props: float, select_func: str = 'roulette',
@@ -46,13 +68,13 @@ class NQueen(GA):
     def __init_chrome(self) -> List[int]:
         return random.sample(range(self.queen_num), self.queen_num)
 
-    def evaluate(self) -> None:
-        self.evaluate_result = [self.evaluate_func(
-            individual) for individual in self.individual]
-        return None
-
     def evaluate_func(self, individual: List[int]) -> float:
-        return 1 / (1 + self.__count_duplicate(individual))
+        """評価関数（逐次処理用）"""
+        return _evaluate_nqueen(individual)
+
+    def _get_evaluate_wrapper(self):
+        """並列処理用のトップレベル関数を返す"""
+        return _evaluate_nqueen
 
     def __count_duplicate(self, individual: list[int]) -> int:
         total_count = 0
@@ -76,7 +98,9 @@ class NQueen(GA):
             self.__print_individual_evaluate()
         while gen < self.gen:
             result_num = len(self.fitting_results)
-            if result_num == MAX_PATTERN[self.queen_num - 1]:
+            if self.queen_num > len(MAX_PATTERN):
+                pass
+            elif result_num == MAX_PATTERN[self.queen_num - 1]:
                 break
             self.step()
             if self.verbose:
@@ -122,13 +146,3 @@ class NQueen(GA):
         with open(self.output_all_results, 'w') as f:
             for result in self.fitting_results:
                 f.write(f"{','.join(tuple(map(str, result)))}\n")
-
-    def output_board(self) -> None:
-        # queen_num = len(board_array)
-        # board = [list('.' * queen_num) for _ in range(queen_num)]
-        # for i in range(len(board_array)):
-        #     board[board_array[i]][i] = 'O'
-        # for line in board:
-        #     print(' '.join(line))
-        # return None
-        pass

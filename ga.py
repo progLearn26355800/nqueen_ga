@@ -1,3 +1,4 @@
+# ga.py
 # coding: utf-8
 
 
@@ -21,10 +22,23 @@ class GA(ABC):
         self.select_func = select_func
         self.cross_func = cross_func
         self.mutation_func = mutation_func
-        
+
         # 並列処理の設定
         self.use_parallel = use_parallel
         self.n_workers = n_workers if n_workers is not None else multiprocessing.cpu_count()
+
+        # 並列化の閾値を上げる
+        self.parallel_threshold = 200
+
+        # ProcessPoolExecutorを事前に作成（再利用）
+        self.executor = None
+        if self.use_parallel:
+            self.executor = ProcessPoolExecutor(max_workers=self.n_workers)
+
+    def __del__(self):
+        """デストラクタでExecutorをクリーンアップ"""
+        if self.executor is not None:
+            self.executor.shutdown(wait=False)
 
     @abstractmethod
     def init_individual(self) -> None:
@@ -32,14 +46,18 @@ class GA(ABC):
 
     def evaluate(self) -> None:
         """個体の評価を行う（並列処理対応）"""
-        if self.use_parallel and len(self.individual) > 10:  # 個体数が少ない場合は逐次処理
+        # 並列化の条件: 個体数が閾値以上 AND 並列処理が有効
+        if self.use_parallel and len(self.individual) >= self.parallel_threshold and self.executor is not None:
+            # 最適なchunksizeを計算（ワーカー数の2〜4倍に分割）
+            optimal_chunksize = max(1, len(self.individual) // (self.n_workers * 3))
+
             # 並列処理で評価
-            with ProcessPoolExecutor(max_workers=self.n_workers) as executor:
-                self.evaluate_result = list(executor.map(
-                    self.evaluate_func, 
-                    self.individual,
-                    chunksize=max(1, len(self.individual) // self.n_workers)
-                ))
+            # 重要: evaluate_funcではなく、_evaluate_wrapperを使用
+            self.evaluate_result = list(self.executor.map(
+                self._get_evaluate_wrapper(),
+                self.individual,
+                chunksize=optimal_chunksize
+            ))
         else:
             # 逐次処理で評価
             self.evaluate_result = [self.evaluate_func(individual) for individual in self.individual]
@@ -49,7 +67,7 @@ class GA(ABC):
     def evaluate_func(self, individual: List[int]) -> float:
         """
         評価関数（サブクラスで実装）
-        
+
         注意: この関数は並列処理で呼び出される可能性があるため、
         以下の点に注意してください：
         - グローバル変数への依存を避ける
@@ -57,6 +75,13 @@ class GA(ABC):
         - pickle化可能な型のみを使用する
         """
         pass
+
+    def _get_evaluate_wrapper(self):
+        """
+        評価関数のラッパーを返す
+        サブクラスでオーバーライドして、トップレベル関数を返す
+        """
+        return self.evaluate_func
 
     def step(self) -> None:
         select_index = self.select.select_func[self.select_func](self.evaluate_result)
@@ -132,7 +157,6 @@ class Cross:
         child[point1:point2] = parent1[point1:point2]
         # 親2から残りの要素を順番に埋める
         pointer = point2
-        pointer
         for value in parent2[point2:] + parent2[:point2]:
             if value not in child:
                 child[pointer % n] = value

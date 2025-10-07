@@ -24,14 +24,14 @@ def main():
     # より大きな数値で計算時間を増やす
     import random
     random.seed(42)
-    
+
     data = []
     for _ in range(100):
-        row = [random.randint(1000000, 10000000) for _ in range(100)]
+        row = [random.randint(1000000, 10000000) for _ in range(10000)]
         data.append(row)
-    
+
     print(f"データ数: {len(data)} 行 × {len(data[0])} 列 = {len(data) * len(data[0])} 個")
-    
+
     # 逐次処理
     start_time = time.time()
     results_seq = []
@@ -39,14 +39,14 @@ def main():
         results_seq.append(process_row(row))
     sequential_time = time.time() - start_time
     print(f"逐次処理時間: {sequential_time:.4f} 秒")
-    
+
     # 並列処理
     start_time = time.time()
     with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
         results_parallel = list(executor.map(process_row, data))
     parallel_time = time.time() - start_time
     print(f"並列処理時間: {parallel_time:.4f} 秒")
-    
+
     print(f"速度向上率: {sequential_time / parallel_time:.2f}倍")
 
 if __name__ == "__main__":
