@@ -4,49 +4,58 @@
 import random
 from abc import ABC, abstractmethod
 from typing import List, Tuple
+from concurrent.futures import ProcessPoolExecutor
 import multiprocessing
-import concurrent.futures
-
-
-cpu_num = multiprocessing.cpu_count()
-max_workers_num = cpu_num 
 
 
 class GA(ABC):
     def __init__(self, gen: int, N: int, N_length: int, mutation_props: float, select_func: str = 'roulette',
                  ranking_props: List[float] = [], cross_func: str = 'random', mutation_func: str = 'point',
-                 multi_mode: bool=False):
+                 use_parallel: bool = False, n_workers: int = None):
         self.gen = gen
         self.N = N
         self.individual = []
         self.select = Select(N, ranking_props)
+        self.mutation = Mutation(N, N_length, mutation_props)
+        self.cross = Cross(N, N_length)
         self.select_func = select_func
         self.cross_func = cross_func
         self.mutation_func = mutation_func
-        self.__init_multi(N, N_length, mutation_props, multi_mode)
-    
-    def __init_multi(self, N: int, N_length: int, mutation_props: float, multi_mode: bool) -> None:
-        if multi_mode:
-            self.mutation = Mutation_Multi(N, N_length, mutation_props)
-            self.cross = Cross_Multi(N, N_length)
-            return None
-        self.mutation = Mutation(N, N_length, mutation_props)
-        self.cross = Cross(N, N_length)
-        return None
         
-
+        # 並列処理の設定
+        self.use_parallel = use_parallel
+        self.n_workers = n_workers if n_workers is not None else multiprocessing.cpu_count()
 
     @abstractmethod
     def init_individual(self) -> None:
         pass
 
     def evaluate(self) -> None:
-        self.evaluate_result = [self.evaluate_func(
-            individual) for individual in self.individual]
+        """個体の評価を行う（並列処理対応）"""
+        if self.use_parallel and len(self.individual) > 10:  # 個体数が少ない場合は逐次処理
+            # 並列処理で評価
+            with ProcessPoolExecutor(max_workers=self.n_workers) as executor:
+                self.evaluate_result = list(executor.map(
+                    self.evaluate_func, 
+                    self.individual,
+                    chunksize=max(1, len(self.individual) // self.n_workers)
+                ))
+        else:
+            # 逐次処理で評価
+            self.evaluate_result = [self.evaluate_func(individual) for individual in self.individual]
         return None
 
     @abstractmethod
     def evaluate_func(self, individual: List[int]) -> float:
+        """
+        評価関数（サブクラスで実装）
+        
+        注意: この関数は並列処理で呼び出される可能性があるため、
+        以下の点に注意してください：
+        - グローバル変数への依存を避ける
+        - すべての必要なデータを引数として受け取る
+        - pickle化可能な型のみを使用する
+        """
         pass
 
     def step(self) -> None:
@@ -63,7 +72,7 @@ class GA(ABC):
 
 
 class Select:
-    def __init__(self, N: int, ranking_props: List[float] = []):
+    def __init__(self, N: int, ranking_props: List[int] = []):
         self.N = N
         self.ranking_props = ranking_props
         self.select_func = {
@@ -192,55 +201,4 @@ class Mutation:
         for N in range(self.N):
             if mutation_props_list[N] < self.mutation_props:
                 random.shuffle(individual[N])
-        return None
-
-
-class Cross_Multi(Cross):
-
-    def __init__(self, N: int, N_length: int):
-        super().__init__(N, N_length)
-        self.cross_func = {
-            'random': self.random_cross_multi,
-            'order': self.order_cross_multi
-        }
-
-    def random_cross_multi(self, individual: List[int]) -> None:
-        with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers_num) as executor:
-            _ = executor.map(self.random_cross, individual)
-        return None
-
-    def order_cross_multi(self, individual: List[int]) -> None:
-        with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers_num) as executor:
-            _ = executor.map(self.order_cross, individual)
-        return None
-
-
-class Mutation_Multi(Mutation):
-    def __init__(self, N: int, N_length: int, mutation_props: float):
-        super().__init__(N, N_length, mutation_props)
-        self.mutation_func = {
-            'random_bit': self.random_bit_mutation_multi,
-            'random': self.random_mutation_multi,
-            'point': self.point_mutation_multi,
-            'shuffle': self.shuffle_mutation_multi
-        }
-
-    def random_bit_mutation_multi(self, individual: List[int]) -> None:
-        with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers_num) as executor:
-            _ = executor.map(self.random_bit_mutation, individual)
-        return None
-
-    def random_mutation_multi(self, individual: List[int]) -> None:
-        with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers_num) as executor:
-            _ = executor.map(self.random_mutation, individual)
-        return None
-
-    def point_mutation_multi(self, individual: List[int]) -> None:
-        with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers_num) as executor:
-            _ = executor.map(self.point_mutation, individual)
-        return None
-
-    def shuffle_mutation_multi(self, individual: List[int]) -> None:
-        with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers_num) as executor:
-            _ = executor.map(self.shuffle_mutation, individual)
         return None

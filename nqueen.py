@@ -28,8 +28,8 @@ class NQueen(GA):
 
     def __init__(self, gen: int, N: int, queen_num: int, mutation_props: float, select_func: str = 'roulette',
                  ranking_props: List[float] = [], cross_func: str = 'random', mutation_func: str = 'point', verbose: bool = False,
-                 multi_mode: bool=False):
-        super().__init__(gen, N, queen_num, mutation_props, select_func, ranking_props, cross_func, mutation_func, multi_mode)
+                 use_parallel: bool = False, n_workers: int = None):
+        super().__init__(gen, N, queen_num, mutation_props, select_func, ranking_props, cross_func, mutation_func, use_parallel, n_workers)
         self.queen_num = queen_num
         self.evaluate_result = []
         self.fitting_results = []
