@@ -93,6 +93,7 @@ class NQueen(GA):
             gen += 1
         self.total_loop = gen
         self.fitting_results = tuple(set([result for result in self.fitting_results]))
+        print()
         return None
 
     def __print_individual_evaluate(self) -> None:

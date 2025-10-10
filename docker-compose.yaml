@@ -1,0 +1,10 @@
+services:
+  python:
+    build: ./build
+    container_name: 'python3'
+    working_dir: '/test'
+    tty: true
+    ports:
+      - 8888:8888
+    volumes:
+      - ./:/test
