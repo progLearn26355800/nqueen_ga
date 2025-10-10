@@ -10,12 +10,17 @@ from typing import List
 from ga import GA
 
 
+def _evaluate_one_max(individual: List[int]):
+    total = sum(individual)
+    return total / len(individual)
+
+
 class OneMax(GA):
     def __init__(self, gen: int, N: int, N_length: int,
                  mutation_props: float, select_func: str = 'roulette',
                  ranking_props: List[float] = [], cross_func: str = 'random', mutation_func: str = 'point',
-                 multi_mode: bool=False):
-        super().__init__(gen, N, N_length, mutation_props, select_func, ranking_props, cross_func, mutation_func, multi_mode)
+                 use_parallel: bool = False, n_workers: int = None):
+        super().__init__(gen, N, N_length, mutation_props, select_func, ranking_props, cross_func, mutation_func, use_parallel, n_workers)
         self.N_length = N_length
         self.fitting_results = []
         self.output_csv_dir = 'output_result_csv'
@@ -25,16 +30,16 @@ class OneMax(GA):
         return None
 
     def evaluate_func(self, individual: List[int]) -> float:
-        total = sum(individual)
-        return total / self.N_length
+        return _evaluate_one_max(individual)
+
+    def _get_evaluate_wrapper(self):
+        return _evaluate_one_max
 
     def fit(self) -> None:
         gen = 0
         self.__init_output_result_csv()
         self.init_individual()
         self.evaluate()
-        print('====== init individual ======')
-        self.__print_individual_evaluate()
         while gen < self.gen:
             self.step()
             print(f'====== {gen + 1} step =======\r', end='')
@@ -43,7 +48,6 @@ class OneMax(GA):
                 break
             gen += 1
         self.total_loop = gen
-        print()
         return None
 
     def __print_individual_evaluate(self) -> None:

@@ -54,7 +54,7 @@ class NQueen(GA):
         super().__init__(gen, N, queen_num, mutation_props, select_func, ranking_props, cross_func, mutation_func, use_parallel, n_workers)
         self.queen_num = queen_num
         self.evaluate_result = []
-        self.fitting_results = []
+        self.fitting_results = set()
         self.total_loop = 0
         self.output_individual_dir = 'output_individual'
         self.output_all_results = 'output_all_result.csv'
@@ -107,13 +107,9 @@ class NQueen(GA):
                 self.__print_individual_evaluate()
             if 1. in self.evaluate_result:
                 for i, evaluate in enumerate(self.evaluate_result):
-                    if self.individual[i] in self.fitting_results:
-                        self.individual[i] = self.__init_chrome()
-                        continue
                     if evaluate == 1.:
-                        self.fitting_results.append(tuple(self.individual[i]))
+                        self.fitting_results.add(tuple(self.individual[i]))
                         self.individual[i] = self.__init_chrome()
-                self.fitting_results = list(set(self.fitting_results))
             print(f'====== {gen + 1} step, result: {result_num} =======\r', end='')
             gen += 1
         self.total_loop = gen
