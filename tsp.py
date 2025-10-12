@@ -74,12 +74,15 @@ class TSP(GA):
             self.__print_individual_evaluate()
         while gen < self.gen:
             self.step()
-            min_point_cost = min(self.evaluate_result)
-            min_index = self.evaluate_result.index(min_point_cost)
-            min_individual = self.individual[min_index]
-            point_cost = _calc_point_cost(min_individual, self.point_cost)
-            print(f'====== {gen + 1} step, min_point_cost_eval: {min_point_cost} =======', end='\n')
-            self.__print_individual_evaluate()
+            max_point_cost = max(self.evaluate_result)
+            max_index = self.evaluate_result.index(max_point_cost)
+            max_individual = self.individual[max_index]
+            point_cost = _calc_point_cost(max_individual, self.point_cost)
+            if self.verbose:
+                print(f'====== {gen + 1} step, max_point_cost_eval: {max_point_cost} =======', end='\n')
+                self.__print_individual_evaluate()
+            else:
+                print(f'====== {gen + 1} step, max_point_cost_eval: {max_point_cost} =======\r', end='')
             gen += 1
         self.total_loop = gen
         return None
