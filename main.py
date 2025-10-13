@@ -9,6 +9,7 @@ import multiprocessing
 from nqueen import NQueen
 from knapsack import Knapsack
 from onemax import OneMax
+from tsp import TSP
 
 
 def load_ranking_props(input_file: str) -> List[float]:
@@ -22,19 +23,28 @@ def load_ranking_props(input_file: str) -> List[float]:
     return ranking_props
 
 
-def calc_fit(use_parallel: bool=False):
+def load_tsp_cost(input_file: str) -> List[float]:
+    tsp_cost = []
+    with open(input_file, 'r') as f:
+        reader = csv.reader(f)
+        tsp_cost = tuple([tuple([int(cost) for cost in row]) for row in reader])
+    return tsp_cost
+
+
+def calc_fit(use_parallel: bool = False):
     ranking_props = load_ranking_props('ranking_rate.csv')
     # knapsack_weight = 65
     # obj_weight = [10, 12, 7, 9, 21, 16]
     # obj_price = [120, 130, 80, 100, 250, 185]
     # nqueen = NQueen(10000, 500, 10, .25, 'ranking', ranking_props, 'order', 'shuffle', use_parallel=use_parallel, n_workers=multiprocessing.cpu_count() // 2)
-    nqueen = NQueen(10000, 1000, 10, .1, 'roulette', ranking_props, 'order', 'shuffle', use_parallel=use_parallel, n_workers=multiprocessing.cpu_count())
+    tsp_cost = load_tsp_cost('input_tsp_cost.csv')
+    tsp = TSP(20, 1000, len(tsp_cost[0]), tsp_cost, .1, 'roulette', ranking_props, 'order', 'shuffle', use_parallel=use_parallel, n_workers=multiprocessing.cpu_count())
     start_time = time.time()
-    nqueen.fit()
+    tsp.fit()
     end_time = time.time()
-    nqueen.output_all_result_to_csv()
+    tsp.output_result_individual_to_csv()
     print()
-    print(f'処理時間: {end_time - start_time:.4f}秒')
+    print(f'処理時間: {end_time - start_time: .4f}秒')
 
 
 if __name__ == '__main__':
