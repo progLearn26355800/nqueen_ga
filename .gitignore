@@ -4,3 +4,5 @@ __pycache__/*
 
 
 *output*
+*input*.csv
+tsp_coordinates.csv
