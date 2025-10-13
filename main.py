@@ -38,7 +38,7 @@ def calc_fit(use_parallel: bool = False):
     # obj_price = [120, 130, 80, 100, 250, 185]
     # nqueen = NQueen(10000, 500, 10, .25, 'ranking', ranking_props, 'order', 'shuffle', use_parallel=use_parallel, n_workers=multiprocessing.cpu_count() // 2)
     tsp_cost = load_tsp_cost('input_tsp_cost.csv')
-    tsp = TSP(10000, 100, len(tsp_cost[0]), tsp_cost, .1, 'roulette', ranking_props, 'order', 'shuffle', use_parallel=use_parallel, n_workers=multiprocessing.cpu_count())
+    tsp = TSP(20, 1000, len(tsp_cost[0]), tsp_cost, .1, 'roulette', ranking_props, 'order', 'shuffle', use_parallel=use_parallel, n_workers=multiprocessing.cpu_count())
     start_time = time.time()
     tsp.fit()
     end_time = time.time()
@@ -52,6 +52,6 @@ if __name__ == '__main__':
     print('=' * 5 + '逐次処理' + '=' * 5)
     calc_fit(use_parallel=False)
     print('=' * 5 + '逐次処理' + '=' * 5)
-    # print('=' * 5 + '並列処理' + '=' * 5)
-    # calc_fit(use_parallel=True)
-    # print('=' * 5 + '並列処理' + '=' * 5)
+    print('=' * 5 + '並列処理' + '=' * 5)
+    calc_fit(use_parallel=True)
+    print('=' * 5 + '並列処理' + '=' * 5)

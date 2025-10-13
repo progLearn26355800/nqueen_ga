@@ -5,6 +5,7 @@ import os
 import shutil
 import random
 from typing import List, Tuple
+from functools import partial
 
 
 from ga import GA
@@ -63,6 +64,34 @@ class TSP(GA):
     def _get_evaluate_wrapper(self):
         """並列処理用のトップレベル関数を返す"""
         return _evaluate_point_cost
+
+    def evaluate(self) -> None:
+        """個体の評価を行う（並列処理対応）"""
+        # 並列化の条件: 個体数が閾値以上 AND 並列処理が有効
+        if self.use_parallel and len(self.individual) >= self.parallel_threshold and self.executor is not None:
+            # 最適なchunksizeを計算
+            # オーバーヘッドを減らすため、より大きなchunksizeを使用
+            # 目安: 各ワーカーが1〜2回処理する程度に分割（大きめ）
+            optimal_chunksize = max(200, len(self.individual) // self.n_workers)
+
+            if self.verbose:
+                print(f'[並列処理] 個体数: {len(self.individual)}, ワーカー数: {self.n_workers}, chunksize: {optimal_chunksize}')
+
+            # 並列処理で評価
+            # partial を使って point_cost を固定
+            eval_func = partial(self._get_evaluate_wrapper(), point_cost=self.point_cost)
+
+            self.evaluate_result = list(self.executor.map(
+                eval_func,
+                self.individual,
+                chunksize=optimal_chunksize
+            ))
+        else:
+            if self.verbose:
+                print(f'[逐次処理] 個体数: {len(self.individual)}, 閾値: {self.parallel_threshold}')
+            # 逐次処理で評価
+            self.evaluate_result = [self.evaluate_func(individual) for individual in self.individual]
+        return None
 
     def fit(self) -> None:
         gen = 0
