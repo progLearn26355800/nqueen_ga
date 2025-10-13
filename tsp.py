@@ -20,7 +20,7 @@ def _evaluate_point_cost(individual: List[int], point_cost: Tuple[Tuple[int]]) -
     TSP問題の評価関数（並列処理用）
     """
     total_cost = _calc_point_cost(individual, point_cost)
-    return 1.0 / (1.0 + total_cost)
+    return -total_cost
 
 
 def _calc_point_cost(individual: List[int], point_cost: Tuple[Tuple[int]]) -> float:
@@ -65,9 +65,44 @@ class TSP(GA):
         self.ax = None  # matplotlibのaxesオブジェクト
 
     def init_individual(self) -> None:
-        self.individual = [random.sample(
-            range(self.point_num), self.point_num) for _ in range(self.N)]
+        """
+        初期個体群の生成
+
+        改善: 完全ランダムだけでなく、nearest neighborヒューリスティックで
+        いくつかの良い初期解を含める
+        """
+        self.individual = []
+
+        # 70%はランダム生成
+        num_random = int(self.N * 0.7)
+        for _ in range(num_random):
+            self.individual.append(random.sample(range(self.point_num), self.point_num))
+
+        # 30%はnearest neighbor法で生成（多様性を持たせる）
+        num_nn = self.N - num_random
+        for _ in range(num_nn):
+            start_city = random.randint(0, self.point_num - 1)
+            nn_route = self.__nearest_neighbor_route(start_city)
+            self.individual.append(nn_route)
+
         return None
+
+    def __nearest_neighbor_route(self, start_city: int) -> List[int]:
+        """
+        Nearest Neighbor法で経路を生成
+        """
+        route = [start_city]
+        unvisited = set(range(self.point_num)) - {start_city}
+
+        current_city = start_city
+        while unvisited:
+            # 最も近い未訪問都市を選択
+            nearest_city = min(unvisited, key=lambda city: self.point_cost[current_city][city])
+            route.append(nearest_city)
+            unvisited.remove(nearest_city)
+            current_city = nearest_city
+
+        return route
 
     def evaluate_func(self, individual: List[int]) -> float:
         """評価関数（逐次処理用）"""
@@ -84,12 +119,9 @@ class TSP(GA):
             # 最適なchunksizeを計算
             # オーバーヘッドを減らすため、より大きなchunksizeを使用
             # 目安: 各ワーカーが1〜2回処理する程度に分割（大きめ）
-            optimal_chunksize = max(200, len(self.individual) // self.n_workers)
+            optimal_chunksize = max(1, len(self.individual) // (self.n_workers * 3))
 
-            if self.verbose:
-                print(f'[並列処理] 個体数: {len(self.individual)}, ワーカー数: {self.n_workers}, chunksize: {optimal_chunksize}')
-
-            # 並列処理で評価
+                # 並列処理で評価
             # partial を使って point_cost を固定
             eval_func = partial(self._get_evaluate_wrapper(), point_cost=self.point_cost)
 
@@ -99,8 +131,6 @@ class TSP(GA):
                 chunksize=optimal_chunksize
             ))
         else:
-            if self.verbose:
-                print(f'[逐次処理] 個体数: {len(self.individual)}, 閾値: {self.parallel_threshold}')
             # 逐次処理で評価
             self.evaluate_result = [self.evaluate_func(individual) for individual in self.individual]
         return None
@@ -127,10 +157,6 @@ class TSP(GA):
 
         # 経路表示が有効な場合、初期世代の最良経路を表示・保存
         if self.show_route_interval is not None:
-            if self.verbose:
-                print(f'====== 初期世代の最良経路 ======')
-                self.__print_route_with_coordinates(max_individual, point_cost, max_point_cost)
-                print()
 
             # 画像として保存
             if self.coordinates is not None:
@@ -149,41 +175,30 @@ class TSP(GA):
 
             # 経路表示の判定
             should_show_route = (self.show_route_interval is not None and
-                                (gen + 1) % self.show_route_interval == 0)
+                                 (gen + 1) % self.show_route_interval == 0)
 
-            if self.verbose:
-                print(f'====== {gen + 1} step, max_point_cost_eval: {max_point_cost} =======', end='\n')
-                self.__print_individual_evaluate()
-            elif should_show_route:
-                print(f'====== {gen + 1} step, max_point_cost_eval: {max_point_cost} =======')
-            else:
-                print(f'====== {gen + 1} step, max_point_cost_eval: {max_point_cost} =======\r', end='')
+            print(f'====== {gen + 1} step, max_point_cost_eval: {max_point_cost} =======\r', end='')
 
             # 指定された間隔で経路を表示・保存
             if should_show_route:
-                if self.verbose:
-                    self.__print_route_with_coordinates(max_individual, point_cost, max_point_cost)
-                    print()
 
                 # 画像として保存
                 if self.coordinates is not None:
-                    filename = os.path.join(self.output_image_dir, f'route_gen_{gen+1:04d}.png')
+                    filename = os.path.join(self.output_image_dir, f'route_gen_{gen + 1}.png')
                     self.__plot_route(max_individual, point_cost, max_point_cost, gen + 1, filename)
                     self.saved_image_paths.append(filename)
-                    if self.verbose:
-                        print(f'  画像を保存: {filename}')
 
             gen += 1
         self.total_loop = gen
 
         # 最終世代の画像を保存（まだ保存されていない場合）
         if self.coordinates is not None and self.show_route_interval is not None:
-            if len(self.saved_image_paths) == 0 or self.saved_image_paths[-1] != os.path.join(self.output_image_dir, f'route_gen_{gen:04d}.png'):
+            if len(self.saved_image_paths) == 0 or self.saved_image_paths[-1] != os.path.join(self.output_image_dir, f'route_gen_{gen}.png'):
                 max_point_cost = max(self.evaluate_result)
                 max_index = self.evaluate_result.index(max_point_cost)
                 max_individual = self.individual[max_index]
                 point_cost = _calc_point_cost(max_individual, self.point_cost)
-                filename = os.path.join(self.output_image_dir, f'route_gen_{gen:04d}.png')
+                filename = os.path.join(self.output_image_dir, f'route_gen_{gen}.png')
                 self.__plot_route(max_individual, point_cost, max_point_cost, gen, filename)
                 self.saved_image_paths.append(filename)
                 print(f'\n最終世代の画像を保存: {filename}')
@@ -279,15 +294,15 @@ class TSP(GA):
             mid_x, mid_y = (x1 + x2) / 2, (y1 + y2) / 2
             dx, dy = x2 - x1, y2 - y1
             ax.arrow(mid_x - dx * 0.1, mid_y - dy * 0.1, dx * 0.2, dy * 0.2,
-                    head_width=2, head_length=1.5, fc='red', ec='red', alpha=0.6, zorder=1)
+                     head_width=2, head_length=1.5, fc='red', ec='red', alpha=0.6, zorder=1)
 
         # 開始地点を強調
         start_x, start_y = self.coordinates[individual[0]]
         ax.scatter([start_x], [start_y], c='green', s=200, zorder=3, edgecolors='black', linewidth=2, marker='*')
 
         # タイトルと情報を表示
-        ax.set_title(f'TSP Route - Generation {generation}\nTotal Cost: {cost:.0f}, Eval Score: {eval_score:.6f}',
-                    fontsize=14, weight='bold')
+        ax.set_title(f'TSP Route - Generation {generation}\nTotal Cost: {cost: .0f}, Eval Score: {eval_score: .6f}',
+                     fontsize=14, weight='bold')
         ax.set_xlabel('X coordinate', fontsize=12)
         ax.set_ylabel('Y coordinate', fontsize=12)
         ax.grid(True, alpha=0.3)
